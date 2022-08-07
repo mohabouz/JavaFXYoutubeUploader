@@ -22,7 +22,6 @@ public class HelloController {
 
     @FXML
     private ProgressBar uploadProgress;
-
     @FXML
     private Button selectFilesButton;
     @FXML
@@ -75,7 +74,8 @@ public class HelloController {
             return;
         }
 
-        YoutubeApiClient client = YoutubeApiClient.getInstance(youtubeSecretJson.getText());
+        YoutubeApiClient client = YoutubeApiClient.getInstance(youtubeSecretJson.getText(), messageLabel);
+
         try {
             client.uploadVideo((File) filesList.getItems().get(0), uploadProgress);
         } catch (GeneralSecurityException | IOException e) {
@@ -105,7 +105,7 @@ public class HelloController {
             return;
         }
 
-        YoutubeApiClient apiClient = YoutubeApiClient.getInstance(youtubeSecretJson.getText());
+        YoutubeApiClient apiClient = YoutubeApiClient.getInstance(youtubeSecretJson.getText(), messageLabel);
         try {
             String apiTestString = apiClient.testApi();
 

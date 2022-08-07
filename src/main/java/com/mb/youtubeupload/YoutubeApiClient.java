@@ -7,6 +7,7 @@ import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.googleapis.media.MediaHttpUploader;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.InputStreamContent;
@@ -17,6 +18,8 @@ import com.google.api.client.util.store.DataStore;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.*;
+import javafx.application.Platform;
+import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 
 import java.io.*;
@@ -28,6 +31,7 @@ import java.util.List;
 public class YoutubeApiClient {
 
     private final String clientSecretJsonPath;
+    private final Label messageLabel;
     private static final Collection<String> SCOPES = List.of("https://www.googleapis.com/auth/youtube.force-ssl");
     private static final String CREDENTIALS_DIRECTORY = ".oauth-credentials";
     private static final HttpTransport HTTP_TRANSPORT = new NetHttpTransport();
@@ -35,14 +39,15 @@ public class YoutubeApiClient {
     private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
     private static YoutubeApiClient instance;
 
-    public static YoutubeApiClient getInstance(String clientSecretJsonPath) {
+    public static YoutubeApiClient getInstance(String clientSecretJsonPath, Label messageLabel) {
         if (instance == null)
-            instance = new YoutubeApiClient(clientSecretJsonPath);
+            instance = new YoutubeApiClient(clientSecretJsonPath, messageLabel);
         return instance;
     }
 
-    private YoutubeApiClient(String clientSecretJsonPath) {
+    private YoutubeApiClient(String clientSecretJsonPath, Label messageLabel) {
         this.clientSecretJsonPath = clientSecretJsonPath;
+        this.messageLabel = messageLabel;
     }
 
     private Credential authorize() throws IOException {
@@ -105,9 +110,10 @@ public class YoutubeApiClient {
 
         // Define the Video object, which will be uploaded as the request body.
         Video video = new Video();
-        InputStreamContent mediaContent =
-                new InputStreamContent("application/octet-stream",
-                        new BufferedInputStream(new FileInputStream(mediaFile)));
+        InputStreamContent mediaContent = new InputStreamContent(
+                "application/octet-stream",
+                new BufferedInputStream(new FileInputStream(mediaFile))
+        );
         mediaContent.setLength(mediaFile.length());
 
         VideoSnippet snippet = new VideoSnippet();
@@ -122,30 +128,9 @@ public class YoutubeApiClient {
         YouTube.Videos.Insert request = youtubeService.videos()
                 .insert("snippet,status", video, mediaContent);
 
-        MediaHttpUploader uploader = request.getMediaHttpUploader();
-        uploader.setDirectUploadEnabled(false);
-        uploader.setProgressListener(mUploader -> {
-            switch (uploader.getUploadState()) {
-                case INITIATION_STARTED -> System.out.println("Initiation Started");
-                case INITIATION_COMPLETE -> System.out.println("Initiation Completed");
-                case MEDIA_IN_PROGRESS -> {
-                    System.out.println("Upload in progress");
-                    System.out.println("Upload percentage: " + uploader.getProgress());
-                    progressBar.setProgress(uploader.getProgress());
-                }
-                case MEDIA_COMPLETE -> System.out.println("Upload Completed!");
-                case NOT_STARTED -> System.out.println("Upload Not Started!");
-            }
-        });
-
-        Video response = request.execute();
-
-        System.out.println("\n================== Returned Video ==================\n");
-        System.out.println("  - Id: " + response.getId());
-        System.out.println("  - Title: " + response.getSnippet().getTitle());
-        System.out.println("  - Tags: " + response.getSnippet().getTags());
-
-        System.out.println(response);
+        UploadRunnable uploadRunnable = new UploadRunnable(request, progressBar);
+        Thread uploadThread = new Thread(uploadRunnable);
+        uploadThread.start();
     }
 
     public String testApi() throws GeneralSecurityException, IOException {
@@ -155,6 +140,57 @@ public class YoutubeApiClient {
                 .list("id,snippet");
         VideoListResponse response = request.setChart("mostPopular").execute();
         return response.toPrettyString();
+    }
+
+    class UploadRunnable implements Runnable {
+
+        YouTube.Videos.Insert request;
+        ProgressBar progressBar;
+
+        public UploadRunnable(YouTube.Videos.Insert request, ProgressBar progressBar) {
+            this.request = request;
+            this.progressBar = progressBar;
+        }
+
+        @Override
+        public void run() {
+            MediaHttpUploader uploader = request.getMediaHttpUploader();
+            uploader.setDirectUploadEnabled(false);
+            uploader.setChunkSize(MediaHttpUploader.MINIMUM_CHUNK_SIZE);
+            uploader.setProgressListener(mUploader -> {
+                switch (uploader.getUploadState()) {
+                    case INITIATION_STARTED -> System.out.println("Initiation Started");
+                    case INITIATION_COMPLETE -> System.out.println("Initiation Completed");
+                    case MEDIA_IN_PROGRESS -> Platform.runLater(() -> {
+                        System.out.println("Upload in progress");
+                        try {
+                            System.out.println("Upload percentage: " + uploader.getProgress());
+                            progressBar.setProgress(uploader.getProgress());
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                    case MEDIA_COMPLETE -> System.out.println("Upload Completed!");
+                    case NOT_STARTED -> System.out.println("Upload Not Started!");
+                }
+            });
+
+            Video response;
+            try {
+                response = request.execute();
+            } catch (IOException e) {
+                GoogleJsonResponseException exception = (GoogleJsonResponseException) e;
+                Platform.runLater(() -> messageLabel.setText(exception.getDetails().getMessage()));
+                return;
+            }
+
+            System.out.println("\n================== Returned Video ==================\n");
+            System.out.println("  - Id: " + response.getId());
+            System.out.println("  - Title: " + response.getSnippet().getTitle());
+            System.out.println("  - Tags: " + response.getSnippet().getTags());
+
+            System.out.println(response);
+        }
     }
 
 }
