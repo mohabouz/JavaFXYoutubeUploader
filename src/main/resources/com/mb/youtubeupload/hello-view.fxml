@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<VBox maxHeight="-Infinity" maxWidth="-Infinity" prefWidth="600.0" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.mb.youtubeupload.HelloController">
+    <children>
+        <Label lineSpacing="4.0" text="Client secret JSON file">
+            <VBox.margin>
+                <Insets />
+            </VBox.margin>
+        </Label>
+      <HBox>
+         <children>
+              <TextField fx:id="youtubeSecretJson" disable="true" editable="false" HBox.hgrow="ALWAYS">
+               <HBox.margin>
+                  <Insets right="8.0" />
+               </HBox.margin></TextField>
+            <Button mnemonicParsing="false" onMouseClicked="#onSecretFileBrowsButtonClicked" text="Browse">
+               <HBox.margin>
+                  <Insets right="8.0" />
+               </HBox.margin></Button>
+            <Button mnemonicParsing="false" onMouseClicked="#onTestApiClicked" text="Test API" />
+         </children>
+         <VBox.margin>
+            <Insets />
+         </VBox.margin>
+      </HBox>
+      <Label fx:id="testMessageText" textFill="#00cd14">
+         <VBox.margin>
+            <Insets bottom="16.0" />
+         </VBox.margin>
+      </Label>
+        <Button fx:id="selectFilesButton" mnemonicParsing="false" onMouseClicked="#onSelectFiles" text="Select Files" underline="true">
+            <VBox.margin>
+                <Insets />
+            </VBox.margin>
+        </Button>
+        <Label text="Selected files">
+            <VBox.margin>
+                <Insets top="16.0" />
+            </VBox.margin>
+            <font>
+                <Font name="System Bold" size="12.0" />
+            </font>
+        </Label>
+        <ListView fx:id="filesList" minHeight="-Infinity" minWidth="-Infinity" onKeyPressed="#onDeleteButtonPressed" prefHeight="200.0" prefWidth="200.0">
+            <VBox.margin>
+                <Insets />
+            </VBox.margin>
+        </ListView>
+        <HBox>
+            <children>
+                <Label fx:id="filesSelectedNumber" text="0" />
+                <Label text=" files selected." />
+            </children>
+            <VBox.margin>
+                <Insets bottom="16.0" />
+            </VBox.margin>
+        </HBox>
+        <Button fx:id="uploadFilesButton" mnemonicParsing="false" onMouseClicked="#onUploadButtonClick" text="Upload Selected files">
+            <VBox.margin>
+                <Insets />
+            </VBox.margin>
+        </Button>
+        <ProgressBar fx:id="uploadProgress" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity" minWidth="-Infinity" progress="0.0">
+            <VBox.margin>
+                <Insets right="16.0" top="16.0" />
+            </VBox.margin>
+        </ProgressBar>
+        <Label text="Progress 10%">
+            <VBox.margin>
+                <Insets bottom="16.0" />
+            </VBox.margin>
+        </Label>
+        <Label fx:id="messageLabel" textFill="#ff6200">
+            <VBox.margin>
+                <Insets />
+            </VBox.margin>
+        </Label>
+    </children>
+    <padding>
+        <Insets bottom="16.0" left="16.0" right="16.0" top="16.0" />
+    </padding>
+</VBox>
